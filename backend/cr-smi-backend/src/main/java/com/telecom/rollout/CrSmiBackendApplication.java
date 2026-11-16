@@ -1,4 +1,4 @@
-package com.telcom.rollout;
+package com.telecom.rollout;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
