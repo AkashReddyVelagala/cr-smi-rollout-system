@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: cr-smi-backend
+  threads:
+    virtual:
+      enabled: true # Enables Java 21 Virtual Threads (Project Loom) for high concurrency
+  datasource:
+    url: jdbc:postgresql://localhost:5432/cr_smi_db
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate # Enforces Flyway as the single source of truth
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
