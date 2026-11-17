@@ -5,6 +5,11 @@ pipeline {
         BACKEND_IMAGE  = 'cr-smi-backend'
         FRONTEND_IMAGE = 'cr-smi-frontend'
         IMAGE_TAG      = "${env.BUILD_NUMBER}"
+	DB_HOST        = 'cr-smi-postgres'
+        // Safe: Only references the Credential IDs stored inside Jenkins
+        POSTGRES_USER     = credentials('cr-smi-db-user')
+        POSTGRES_PASSWORD = credentials('cr-smi-db-password')
+
     }
 
     stages {
