@@ -4,14 +4,14 @@
 *.key
 
 # Java / Maven
-backend/target/
+**/target/
 *.jar
 *.war
 
 # Node / React
-frontend/node_modules/
-frontend/dist/
-.vite/
+**/node_modules/
+**/dist/
+**/.vite/
 
 # IDE & OS
 .idea/
@@ -19,4 +19,3 @@ frontend/dist/
 .DS_Store
 Thumbs.db
 *.log
-EOF
