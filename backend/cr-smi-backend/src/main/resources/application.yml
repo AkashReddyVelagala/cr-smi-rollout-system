@@ -5,7 +5,7 @@ spring:
     virtual:
       enabled: true # Enables Java 21 Virtual Threads (Project Loom) for high concurrency
   datasource:
-    url: jdbc:postgresql://localhost:5432/cr_smi_db
+    url: jdbc:postgresql://${DB_HOST}:5432/cr_smi_db
     username: ${POSTGRES_USER}
     password: ${POSTGRES_PASSWORD}
     driver-class-name: org.postgresql.Driver
