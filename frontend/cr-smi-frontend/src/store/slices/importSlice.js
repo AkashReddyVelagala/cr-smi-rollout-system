@@ -10,7 +10,7 @@ export const validateImportFile = createAsyncThunk(
       const { data } = await apiClient.post("/import/validate", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      return data;
+      return { fileName: file.name, result: data };
     } catch (err) {
       return rejectWithValue(err.message);
     }
@@ -38,14 +38,19 @@ export const commitImportRows = createAsyncThunk(
 const importSlice = createSlice({
   name: "importData",
   initialState: {
+    fileName: "",
     previewData: null,
     validating: false,
     committing: false,
     banner: null,
   },
   reducers: {
-    clearImportState: (state) => {
+    resetImport: (state) => {
+      state.fileName = "";
       state.previewData = null;
+      state.banner = null;
+    },
+    dismissBanner: (state) => {
       state.banner = null;
     },
   },
@@ -57,21 +62,25 @@ const importSlice = createSlice({
       })
       .addCase(validateImportFile.fulfilled, (state, action) => {
         state.validating = false;
-        state.previewData = action.payload;
+        state.fileName = action.payload.fileName;
+        state.previewData = action.payload.result;
       })
       .addCase(validateImportFile.rejected, (state, action) => {
         state.validating = false;
+        state.previewData = null;
         state.banner = { type: "error", text: action.payload };
       })
       .addCase(commitImportRows.pending, (state) => {
         state.committing = true;
+        state.banner = null;
       })
       .addCase(commitImportRows.fulfilled, (state, action) => {
         state.committing = false;
         state.previewData = null;
+        state.fileName = "";
         state.banner = {
           type: "success",
-          text: `Successfully imported ${action.payload.nodesPersisted} nodes.`,
+          text: `Successfully imported ${action.payload.nodesPersisted} node(s).`,
         };
       })
       .addCase(commitImportRows.rejected, (state, action) => {
@@ -81,5 +90,5 @@ const importSlice = createSlice({
   },
 });
 
-export const { clearImportState } = importSlice.actions;
+export const { resetImport, dismissBanner } = importSlice.actions;
 export default importSlice.reducer;
