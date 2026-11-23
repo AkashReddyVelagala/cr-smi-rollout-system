@@ -33,8 +33,8 @@ public class TopologyController {
     @GetMapping("/racks/{rackId}/nodes")
     public List<NodeDto> getNodesByRack(@PathVariable UUID rackId, @RequestParam(required = false) NodeType nodeType) {
         var nodes = (nodeType != null)
-                ? nodeRepository.findByRackIdAndNodeType(rackId, nodeType)
-                : nodeRepository.findByRackId(rackId);
+                ? nodeRepository.findByRackIdAndNodeTypeWithHierarchy(rackId, nodeType)
+                : nodeRepository.findByRackIdWithHierarchy(rackId);
         return nodes.stream()
                 .map(n -> new NodeDto(
                         n.getId(), n.getRack().getId(), n.getRack().getRackName(),

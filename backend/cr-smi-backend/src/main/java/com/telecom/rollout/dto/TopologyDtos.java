@@ -3,6 +3,7 @@ package com.telecom.rollout.dto;
 import com.telecom.rollout.enums.RolloutEnums.NodeType;
 import com.telecom.rollout.enums.RolloutEnums.Platform;
 
+import java.util.List;
 import java.util.UUID;
 
 public class TopologyDtos {

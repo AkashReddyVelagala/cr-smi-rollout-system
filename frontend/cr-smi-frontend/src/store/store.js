@@ -1,9 +1,10 @@
 import { configureStore } from "@reduxjs/toolkit";
 import importReducer from "./slices/importSlice";
+import plannerReducer from "./slices/plannerSlice";
 
 export const store = configureStore({
   reducer: {
     importData: importReducer,
-    // Add planner, cr, sr, dashboard, topology reducers as each screen is built
+    planner: plannerReducer,
   },
 });
