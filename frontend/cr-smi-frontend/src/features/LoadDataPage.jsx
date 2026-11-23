@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   UploadCloud,
@@ -12,6 +12,7 @@ import {
 import {
   validateImportFile,
   commitImportRows,
+  fetchImportHistory,
   resetImport,
   dismissBanner,
 } from "../store/slices/importSlice";
@@ -21,9 +22,59 @@ export default function LoadDataPage() {
   const fileInputRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  const { fileName, previewData, validating, committing, banner } = useSelector(
-    (state) => state.importData,
-  );
+  const { fileName, previewData, validating, committing, banner, historyLogs } =
+    useSelector((state) => state.importData);
+
+  useEffect(() => {
+    dispatch(fetchImportHistory());
+  }, [dispatch]);
+
+  const downloadLogCsv = (logEntry) => {
+    const headers = [
+      "Row",
+      "CR Number",
+      "Site Code",
+      "Site Name",
+      "Region",
+      "NSO",
+      "Rack",
+      "Node Name",
+      "Node Type",
+      "Current Version",
+      "Target Version",
+      "Validation Status",
+      "Message",
+    ];
+    const csvLines = [
+      headers.join(","),
+      ...logEntry.rows.map((r) =>
+        [
+          r.rowNumber,
+          r.crNumber,
+          r.siteCode,
+          r.siteName,
+          r.region,
+          r.nso,
+          r.rackName,
+          r.nodeName,
+          r.nodeType,
+          r.currentVersion,
+          r.targetVersion,
+          r.validationStatus,
+          `"${(r.message || "").replace(/"/g, '""')}"`,
+        ].join(","),
+      ),
+    ];
+    const blob = new Blob([csvLines.join("\n")], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${logEntry.stage.toLowerCase()}_${logEntry.fileName || "report"}_${logEntry.id}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   const handleFileSelect = (file) => {
     if (!file) return;
@@ -265,6 +316,68 @@ export default function LoadDataPage() {
                   : `Import ${importableCount} Valid Row${importableCount === 1 ? "" : "s"}`}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Validation & Import History Log */}
+      {historyLogs.length > 0 && (
+        <div className="app-card overflow-hidden">
+          <div className="app-card-header">
+            <div>
+              <h3 className="font-bold text-slate-900 text-sm">
+                Validation &amp; Import History Logs
+              </h3>
+            </div>
+          </div>
+
+          <div className="table-wrapper">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Stage</th>
+                  <th>File Name</th>
+                  <th>Summary</th>
+                  <th className="text-right">Report</th>
+                </tr>
+              </thead>
+              <tbody>
+                {historyLogs.map((log) => (
+                  <tr key={log.id}>
+                    <td className="text-xs font-mono text-slate-500">
+                      {log.timestamp}
+                    </td>
+                    <td>
+                      <span
+                        className={
+                          log.stage === "IMPORT_COMMIT"
+                            ? "badge-success"
+                            : "badge-neutral"
+                        }
+                      >
+                        {log.stage === "IMPORT_COMMIT"
+                          ? "Committed to DB"
+                          : "Validation Run"}
+                      </span>
+                    </td>
+                    <td className="font-semibold text-slate-800">
+                      {log.fileName}
+                    </td>
+                    <td className="text-xs text-slate-600">{log.summary}</td>
+                    <td className="text-right">
+                      <button
+                        type="button"
+                        onClick={() => downloadLogCsv(log)}
+                        className="btn-secondary text-xs py-1 px-2.5 inline-flex items-center gap-1.5"
+                      >
+                        <Download className="w-3.5 h-3.5" /> Download CSV
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

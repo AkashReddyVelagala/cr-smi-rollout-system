@@ -22,10 +22,10 @@ public class AuditLog {
     @Column(nullable = false, length = 64)
     private String action;
 
-    @Column(name = "previous_state", length = 64)
+    @Column(name = "previous_state", columnDefinition = "TEXT")
     private String previousState;
 
-    @Column(name = "new_state", length = 64)
+    @Column(name = "new_state", columnDefinition = "TEXT")
     private String newState;
 
     @Column(columnDefinition = "TEXT")

@@ -50,8 +50,8 @@ CREATE TABLE audit_logs (
     entity_type     VARCHAR(32)  NOT NULL, -- CR, NODE_EXECUTION, SR
     entity_id       UUID         NOT NULL,
     action          VARCHAR(64)  NOT NULL,
-    previous_state  VARCHAR(64),
-    new_state       VARCHAR(64),
+    previous_state  TEXT,
+    new_state       TEXT,
     reason          TEXT,
     performed_by    VARCHAR(120) NOT NULL,
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()

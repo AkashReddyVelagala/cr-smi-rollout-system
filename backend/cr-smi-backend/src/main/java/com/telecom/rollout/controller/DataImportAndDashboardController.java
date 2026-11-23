@@ -3,6 +3,7 @@ package com.telecom.rollout.controller;
 import com.telecom.rollout.dto.RolloutDtos.DashboardKpiDto;
 import com.telecom.rollout.dto.RolloutDtos.ImportRowPreviewDto;
 import com.telecom.rollout.dto.RolloutDtos.ImportValidationResponse;
+import com.telecom.rollout.entities.AuditLog;
 import com.telecom.rollout.service.DashboardService;
 import com.telecom.rollout.service.DataImportService;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,11 @@ public class DataImportAndDashboardController {
             @RequestParam(defaultValue = "Operations Engineer") String performedBy) {
         int count = dataImportService.commitImportedRows(rows, performedBy);
         return Map.of("status", "IMPORTED", "nodesPersisted", count);
+    }
+
+    @GetMapping("/import/history")
+    public List<AuditLog> getImportHistory() {
+        return dataImportService.getImportHistory();
     }
 
     @GetMapping("/import/template")
