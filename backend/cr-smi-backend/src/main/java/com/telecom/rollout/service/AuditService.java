@@ -39,4 +39,8 @@ public class AuditService {
                 ))
                 .toList();
     }
+
+    @Transactional(readOnly = true)
+    public List<AuditLog> getHistory(String entityType) {
+        return auditLogRepository.findByEntityTypeOrderByCreatedAtDesc(entityType); }
 }

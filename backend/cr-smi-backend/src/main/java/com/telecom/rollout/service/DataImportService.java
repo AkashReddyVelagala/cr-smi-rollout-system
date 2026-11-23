@@ -1,8 +1,11 @@
 package com.telecom.rollout.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencsv.CSVReader;
 import com.telecom.rollout.dto.RolloutDtos.ImportRowPreviewDto;
 import com.telecom.rollout.dto.RolloutDtos.ImportValidationResponse;
+import com.telecom.rollout.entities.AuditLog;
 import com.telecom.rollout.entities.Node;
 import com.telecom.rollout.entities.Rack;
 import com.telecom.rollout.entities.Site;
@@ -32,6 +35,8 @@ public class DataImportService {
     private final NodeRepository nodeRepository;
     private final AuditService auditService;
 
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     public ImportValidationResponse validateFile(MultipartFile file) {
         List<String[]> rawRows = parseRows(file);
         List<ImportRowPreviewDto> previews = new ArrayList<>();
@@ -56,11 +61,13 @@ public class DataImportService {
             String status = "VALID";
             String msg = "Ready to import";
 
-            if (siteCode.isBlank() || rackName.isBlank() || nodeName.isBlank() || targetVer.isBlank()) {
+            if (isNullOrNa(siteCode) || isNullOrNa(siteName) || isNullOrNa(region)
+                    || isNullOrNa(nso) || isNullOrNa(rackName) || isNullOrNa(nodeName)
+                    || isNullOrNa(nodeTypeStr) || isNullOrNa(currVer) || isNullOrNa(targetVer)) {
                 status = "ERROR";
-                msg = "Missing mandatory field (site_code, rack_name, node_name, or target_version)";
+                msg = "Null, N/A, or blank values are not allowed in required fields";
                 err++;
-            } else if (!seenNodeNames.add(nodeName.toUpperCase())) {
+            } else if (!seenNodeNames.add(nodeName.trim().toUpperCase())) {
                 status = "ERROR";
                 msg = "Duplicate node_name in uploaded file: " + nodeName;
                 err++;
@@ -68,13 +75,13 @@ public class DataImportService {
                 status = "ERROR";
                 msg = "Unsupported node_type: " + nodeTypeStr;
                 err++;
-            } else if (currVer.equalsIgnoreCase(targetVer)) {
+            } else if (currVer.trim().equalsIgnoreCase(targetVer.trim())) {
                 status = "WARNING";
-                msg = "Current version matches target version (no-op upgrade)";
+                msg = "Current version matches target version (no upgrade)";
                 warn++;
-            } else if (nodeRepository.findByNodeNameIgnoreCase(nodeName).isPresent()) {
+            } else if (nodeRepository.findByNodeNameIgnoreCase(nodeName.trim()).isPresent()) {
                 status = "WARNING";
-                msg = "Existing node will have target_version updated";
+                msg = "Node already exists in DB — target_version will be updated";
                 warn++;
             } else {
                 valid++;
@@ -86,6 +93,16 @@ public class DataImportService {
                     currVer, targetVer, status, msg
             ));
         }
+
+        String summary = String.format("Total: %d | Valid: %d | Warnings: %d | Errors: %d",
+                previews.size(), valid, warn, err);
+
+        String safeFileName = (file.getOriginalFilename() != null && !file.getOriginalFilename().isBlank())
+                ? file.getOriginalFilename()
+                : "upload.xlsx";
+
+        auditService.record("DATA_IMPORT", UUID.randomUUID(), "BULK_DATA_IMPORTED",
+                safeFileName, toJson(previews), summary, "Engineer");
 
         return new ImportValidationResponse(previews.size(), valid, warn, err, previews);
     }
@@ -100,7 +117,7 @@ public class DataImportService {
                     .orElseGet(() -> siteRepository.save(Site.builder()
                             .siteCode(row.siteCode().toUpperCase())
                             .siteName(row.siteName().isBlank() ? row.siteCode() : row.siteName())
-                            .region(row.region().isBlank() ? "South" : row.region())
+                            .region(row.region().isBlank() ? "DEFAULT" : row.region())
                             .nso(row.nso().isBlank() ? "NSO-DEFAULT" : row.nso())
                             .build()));
 
@@ -117,7 +134,7 @@ public class DataImportService {
                             .nodeName(row.nodeName().toUpperCase())
                             .nodeType(NodeType.valueOf(row.nodeType().toUpperCase()))
                             .platform(Platform.CNDP)
-                            .currentVersion(row.currentVersion().isBlank() ? "2024.01.0" : row.currentVersion())
+                            .currentVersion(row.currentVersion().isBlank() ? "DEFAULT_VERSION" : row.currentVersion())
                             .build());
 
             node.setTargetVersion(row.targetVersion());
@@ -126,8 +143,14 @@ public class DataImportService {
         }
 
         auditService.record("DATA_IMPORT", UUID.randomUUID(), "BULK_DATA_IMPORTED",
-                null, "IMPORTED", "Persisted " + imported + " nodes", performedBy);
+                null, toJson(rows), "Imported " + imported + " node(s) into DB", performedBy);
+
+
         return imported;
+    }
+
+    public List<AuditLog> getImportHistory() {
+        return auditService.getHistory("DATA_IMPORT");
     }
 
     private List<String[]> parseRows(MultipartFile file) {
@@ -172,6 +195,25 @@ public class DataImportService {
             return true;
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    private boolean isNullOrNa(String val) {
+        if (val == null || val.isBlank()) {
+            return true;
+        }
+        String trimmed = val.trim();
+        return trimmed.equalsIgnoreCase("N/A")
+                || trimmed.equalsIgnoreCase("NA")
+                || trimmed.equalsIgnoreCase("NULL")
+                || trimmed.equals("-");
+    }
+
+    private String toJson(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException e) {
+            return "[]";
         }
     }
 }

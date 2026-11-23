@@ -35,6 +35,51 @@ export const commitImportRows = createAsyncThunk(
   },
 );
 
+export const fetchImportHistory = createAsyncThunk(
+  "importData/fetchHistory",
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await apiClient.get("/import/history");
+      const list = Array.isArray(data) ? data : data?.content || [];
+
+      return list.map((log) => {
+        const rawNewState = log.newState ?? log.new_state;
+        let parsedRows = [];
+        if (
+          typeof rawNewState === "string" &&
+          rawNewState.trim().startsWith("[")
+        ) {
+          try {
+            parsedRows = JSON.parse(rawNewState);
+          } catch {
+            parsedRows = [];
+          }
+        } else if (Array.isArray(rawNewState)) {
+          parsedRows = rawNewState;
+        }
+
+        const createdAt = log.createdAt ?? log.created_at;
+        return {
+          id: log.id,
+          timestamp: createdAt
+            ? new Date(createdAt).toLocaleString()
+            : "Just now",
+          stage:
+            log.action === "BULK_DATA_IMPORTED"
+              ? "IMPORT_COMMIT"
+              : "VALIDATION",
+          fileName:
+            log.previousState ?? log.previous_state ?? "import_batch.xlsx",
+          summary: log.reason || "Completed",
+          rows: parsedRows,
+        };
+      });
+    } catch (err) {
+      return rejectWithValue(err.message);
+    }
+  },
+);
+
 const importSlice = createSlice({
   name: "importData",
   initialState: {
@@ -43,6 +88,7 @@ const importSlice = createSlice({
     validating: false,
     committing: false,
     banner: null,
+    historyLogs: [],
   },
   reducers: {
     resetImport: (state) => {
@@ -64,6 +110,14 @@ const importSlice = createSlice({
         state.validating = false;
         state.fileName = action.payload.fileName;
         state.previewData = action.payload.result;
+        state.historyLogs.unshift({
+          id: Date.now(),
+          timestamp: new Date().toLocaleString(),
+          stage: "VALIDATION",
+          fileName: action.payload.fileName,
+          summary: `Total: ${action.payload.result.totalRows} | Valid: ${action.payload.result.validCount} | Warnings: ${action.payload.result.warningCount} | Errors: ${action.payload.result.errorCount}`,
+          rows: action.payload.result.rows,
+        });
       })
       .addCase(validateImportFile.rejected, (state, action) => {
         state.validating = false;
@@ -76,6 +130,16 @@ const importSlice = createSlice({
       })
       .addCase(commitImportRows.fulfilled, (state, action) => {
         state.committing = false;
+        const committedRows = state.previewData?.rows || [];
+        const importedFileName = state.fileName;
+        state.historyLogs.unshift({
+          id: Date.now(),
+          timestamp: new Date().toLocaleString(),
+          stage: "IMPORT_COMMIT",
+          fileName: importedFileName,
+          summary: `Persisted ${action.payload.nodesPersisted} node(s) to PostgreSQL`,
+          rows: committedRows,
+        });
         state.previewData = null;
         state.fileName = "";
         state.banner = {
@@ -86,6 +150,9 @@ const importSlice = createSlice({
       .addCase(commitImportRows.rejected, (state, action) => {
         state.committing = false;
         state.banner = { type: "error", text: action.payload };
+      })
+      .addCase(fetchImportHistory.fulfilled, (state, action) => {
+        state.historyLogs = action.payload;
       });
   },
 });
