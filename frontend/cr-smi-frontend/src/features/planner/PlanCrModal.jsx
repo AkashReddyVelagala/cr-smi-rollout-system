@@ -14,7 +14,7 @@ export default function PlanCrModal({ isOpen, onClose, defaultDate }) {
     useSelector((state) => state.planner);
 
   const [crNumber, setCrNumber] = useState(
-    `CR-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+    `CHG2026-${Math.floor(1000 + Math.random() * 9000)}`,
   );
   const [title, setTitle] = useState("");
   const [owner, setOwner] = useState("Operations NetOps");
